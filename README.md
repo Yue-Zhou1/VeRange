@@ -1,6 +1,6 @@
 # VeRange
 This repository contains the source code of the paper `VeRange: Verification-efficient Zero-knowledge Range Arguments
-with Transparent Setup for Blockchain Applications and More` at the eprint link: `-`.
+with Transparent Setup for Blockchain Applications and More` at [eprint](https://eprint.iacr.org/2025/528).
 
 `Note that the code is for research only`.
 
