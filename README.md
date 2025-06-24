@@ -23,3 +23,15 @@ To run the tests
 
 * VeRangeSolidity
   * Navigate to Branch `solidity/test`.
+
+**Key points to know:**
+------------------------
+1. **Branches, not folders**: The main development work happens on other Git branches. The `java` branch houses a Maven-based Java implementation under `java/src/main/java/zkp`, and the `solidity` branch holds Solidity smart-contract code under `solidity/contracts`.
+2. **Multiple range-argument variants**: On these branches you’ll find different variants such as BIC, Bulletproofs++, and various “VeRange-Type*” implementations.
+3. **Testing locations**: Java tests are under `java/src/test/java/ZKP`, while Solidity tests live in `solidity/test`.
+4. **Research-only**: The `README` emphasizes that the code is provided for research purposes and references the associated paper [eprint](https://eprint.iacr.org/2025/528).
+
+Because this `main` branch only includes documentation, you’ll need to switch to the respective branches to see the actual implementation. If your goal is to build or understand the code:
+- **Explore each branch**. Check out `java` or `solidity` to inspect the source directories mentioned in the README.
+- **Read the associated paper** to understand the cryptographic background and how the range arguments work.
+- **Learn the build tools**: The Java code uses Maven, while the Solidity code relies on Truffle; familiarity with these toolchains will help you run tests and examples.
