@@ -5,6 +5,8 @@ pub mod curve;
 pub mod params;
 pub mod scalar;
 pub mod transcript;
+pub mod arith;
+pub mod vector;
 
 use crate::commitment::Commitment;
 use crate::curve::Scalar;
@@ -17,6 +19,8 @@ pub enum CoreError {
     InvalidGenerator(&'static str),
     EmptyGeneratorBasis,
     InsufficientGenerators { required: usize, available: usize },
+    VectorLengthMismatch { left: usize, right: usize },
+    InvalidRadix,
 }
 
 impl Display for CoreError {
@@ -31,6 +35,10 @@ impl Display for CoreError {
                 f,
                 "insufficient generators: required {required}, available {available}"
             ),
+            Self::VectorLengthMismatch { left, right } => {
+                write!(f, "vector length mismatch: left {left}, right {right}")
+            }
+            Self::InvalidRadix => write!(f, "radix must be greater than 1"),
         }
     }
 }
