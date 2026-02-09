@@ -1,5 +1,9 @@
+use crate::utils::{
+    biguint_to_scalar, build_base_powers, commit_with_basis_and_h, inner_product, invert_or_err,
+    pow_usize, random_scalar,
+};
 use crate::ProofError;
-use ark_ff::{Field, One, PrimeField, Zero};
+use ark_ff::{One, Zero};
 use num_bigint::BigUint;
 use rand_core::RngCore;
 use verange_core::arith::decompose_to_nary_padded;
@@ -352,12 +356,12 @@ impl Type2PVerifier {
         let fk_sum = sum_commitments(&proof.cfk);
         let eq3_lhs = fk_sum.add(&Commitment::new(params.h * proof.eta3));
         let mut eq3_rhs = Commitment::identity();
-        for i in 0..statement.b {
+        for (i, cm) in proof.cms.iter().enumerate() {
             let inv = invert_or_err(
                 alpha + Scalar::from(i as u64),
                 "alpha + i inverse does not exist",
             )?;
-            eq3_rhs = eq3_rhs.add(&proof.cms[i].mul_scalar(inv));
+            eq3_rhs = eq3_rhs.add(&cm.mul_scalar(inv));
         }
         let b3 = eq3_lhs == eq3_rhs;
 
@@ -374,8 +378,8 @@ impl Type2PVerifier {
             .fold(Scalar::from(0u64), |acc, value| acc + *value);
         let eq4_lhs = commit_to(params, vj_sum - alpha_bk_ek, proof.eta4);
         let mut eq4_rhs = Commitment::identity();
-        for col in 0..k {
-            eq4_rhs = eq4_rhs.add(&proof.cws[col].mul_scalar(cl_es[col]));
+        for (cw, e) in proof.cws.iter().zip(cl_es.iter()) {
+            eq4_rhs = eq4_rhs.add(&cw.mul_scalar(*e));
         }
         eq4_rhs = eq4_rhs.add(&proof.big_r);
         let b4 = eq4_lhs == eq4_rhs;
@@ -385,8 +389,8 @@ impl Type2PVerifier {
             proof.ys[0] == sum_cws
         } else {
             let mut agg = Commitment::identity();
-            for i in 0..statement.tt {
-                agg = agg.add(&proof.ys[i].mul_scalar(pow_usize(gamma, i + 1)));
+            for (i, y) in proof.ys.iter().enumerate().take(statement.tt) {
+                agg = agg.add(&y.mul_scalar(pow_usize(gamma, i + 1)));
             }
             agg == sum_cws
         };
@@ -552,6 +556,11 @@ fn validate_statement(
     if statement.nbits > statement.l * statement.k {
         return Err(ProofError::InvalidStatement("L*K must be >= nbits"));
     }
+    if !statement.aggregated && statement.tt != 1 {
+        return Err(ProofError::InvalidStatement(
+            "non-aggregated mode requires tt == 1",
+        ));
+    }
     if statement.aggregated && statement.tt <= 1 {
         return Err(ProofError::InvalidStatement(
             "aggregated mode requires tt > 1",
@@ -674,56 +683,4 @@ fn challenge_beta(
         transcript.append_point(b"ctk", commitment.point());
     }
     transcript.challenge_scalar(b"beta")
-}
-
-fn commit_with_basis_and_h(
-    basis: &[CurvePoint],
-    coeffs: &[Scalar],
-    h: &CurvePoint,
-    r: Scalar,
-) -> Result<Commitment, ProofError> {
-    if basis.len() != coeffs.len() {
-        return Err(ProofError::InvalidStatement(
-            "basis and coefficient lengths must match",
-        ));
-    }
-
-    let mut point = *h * r;
-    for (g, c) in basis.iter().zip(coeffs.iter()) {
-        point += *g * *c;
-    }
-    Ok(Commitment::new(point))
-}
-
-fn build_base_powers(nbits: usize, base: Scalar) -> Vec<Scalar> {
-    (0..nbits).map(|i| pow_usize(base, i)).collect()
-}
-
-fn inner_product(a: &[Scalar], b: &[Scalar]) -> Result<Scalar, ProofError> {
-    if a.len() != b.len() {
-        return Err(ProofError::InvalidProof(
-            "inner-product vectors must have same length",
-        ));
-    }
-    Ok(a.iter()
-        .zip(b.iter())
-        .fold(Scalar::from(0u64), |acc, (x, y)| acc + (*x * *y)))
-}
-
-fn invert_or_err(value: Scalar, msg: &'static str) -> Result<Scalar, ProofError> {
-    value.inverse().ok_or(ProofError::InvalidProof(msg))
-}
-
-fn biguint_to_scalar(value: &BigUint) -> Scalar {
-    Scalar::from_be_bytes_mod_order(&value.to_bytes_be())
-}
-
-fn pow_usize(base: Scalar, exp: usize) -> Scalar {
-    base.pow([exp as u64])
-}
-
-fn random_scalar(rng: &mut impl RngCore) -> Scalar {
-    let mut bytes = [0u8; 64];
-    rng.fill_bytes(&mut bytes);
-    Scalar::from_be_bytes_mod_order(&bytes)
 }

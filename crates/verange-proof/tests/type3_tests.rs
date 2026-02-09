@@ -6,6 +6,7 @@ use rand_chacha::ChaCha20Rng;
 use verange_core::transcript::TranscriptMode;
 use verange_core::PedersenParams;
 use verange_proof::type3::{Type3Prover, Type3Statement, Type3Verifier, Type3Witness};
+use verange_proof::ProofError;
 
 fn sample_params(u: usize) -> PedersenParams {
     let g = G1Projective::generator();
@@ -77,4 +78,47 @@ fn type3_tests_tamper_fails() {
         !Type3Verifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
             .expect("verify")
     );
+}
+
+#[test]
+fn type3_tests_non_aggregated_tt_gt1_is_rejected() {
+    let params = sample_params(4);
+    let statement = Type3Statement {
+        nbits: 8,
+        u: 4,
+        v: 4,
+        b: 4,
+        tt: 1,
+        aggregated: false,
+    };
+    let witness = Type3Witness {
+        values: vec![BigUint::from(119u32)],
+    };
+
+    let mut rng = ChaCha20Rng::from_seed([73u8; 32]);
+    let proof = Type3Prover::prove(
+        &statement,
+        &witness,
+        &params,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("prove");
+
+    let invalid_statement = Type3Statement {
+        nbits: 8,
+        u: 4,
+        v: 4,
+        b: 4,
+        tt: 2,
+        aggregated: false,
+    };
+    let err = Type3Verifier::verify(
+        &invalid_statement,
+        &proof,
+        &params,
+        TranscriptMode::JavaCompat,
+    )
+    .expect_err("verify should reject non-aggregated tt > 1");
+    assert!(matches!(err, ProofError::InvalidStatement(_)));
 }

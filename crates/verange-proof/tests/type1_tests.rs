@@ -3,9 +3,10 @@ use ark_ec::Group;
 use num_bigint::BigUint;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use verange_core::PedersenParams;
 use verange_core::transcript::TranscriptMode;
+use verange_core::PedersenParams;
 use verange_proof::type1::{Type1Prover, Type1Statement, Type1Verifier, Type1Witness};
+use verange_proof::ProofError;
 
 fn sample_params(l: usize) -> PedersenParams {
     let g = G1Projective::generator();
@@ -30,16 +31,19 @@ fn type1_tests_valid_proof_verifies() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([7u8; 32]);
-    let proof = Type1Prover::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("proof generation");
-
-    assert!(Type1Verifier::verify(
+    let proof = Type1Prover::prove(
         &statement,
-        &proof,
+        &witness,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
+        &mut rng,
     )
-    .expect("verification"));
+    .expect("proof generation");
+
+    assert!(
+        Type1Verifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verification")
+    );
 }
 
 #[test]
@@ -56,18 +60,21 @@ fn type1_tests_tampered_proof_fails() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([11u8; 32]);
-    let mut proof = Type1Prover::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("proof generation");
+    let mut proof = Type1Prover::prove(
+        &statement,
+        &witness,
+        &params,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("proof generation");
 
     proof.eta1 += Fr::from(1u64);
 
-    assert!(!Type1Verifier::verify(
-        &statement,
-        &proof,
-        &params,
-        TranscriptMode::JavaCompat
-    )
-    .expect("verification"));
+    assert!(
+        !Type1Verifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verification")
+    );
 }
 
 #[test]
@@ -84,14 +91,56 @@ fn type1_tests_aggregated_case_verifies() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([13u8; 32]);
-    let proof = Type1Prover::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("proof generation");
-
-    assert!(Type1Verifier::verify(
+    let proof = Type1Prover::prove(
         &statement,
+        &witness,
+        &params,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("proof generation");
+
+    assert!(
+        Type1Verifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verification")
+    );
+}
+
+#[test]
+fn type1_tests_non_aggregated_tt_gt1_is_rejected() {
+    let params = sample_params(4);
+    let statement = Type1Statement {
+        nbits: 8,
+        k: 2,
+        tt: 1,
+        aggregated: false,
+    };
+    let witness = Type1Witness {
+        values: vec![BigUint::from(173u32)],
+    };
+
+    let mut rng = ChaCha20Rng::from_seed([17u8; 32]);
+    let proof = Type1Prover::prove(
+        &statement,
+        &witness,
+        &params,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("proof generation");
+
+    let invalid_statement = Type1Statement {
+        nbits: 8,
+        k: 2,
+        tt: 2,
+        aggregated: false,
+    };
+    let err = Type1Verifier::verify(
+        &invalid_statement,
         &proof,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
     )
-    .expect("verification"));
+    .expect_err("verify should reject non-aggregated tt > 1");
+    assert!(matches!(err, ProofError::InvalidStatement(_)));
 }

@@ -1,5 +1,9 @@
+use crate::utils::{
+    biguint_to_scalar, build_base_powers, commit_with_basis_and_h, inner_product, invert_or_err,
+    pow_usize, random_scalar,
+};
 use crate::ProofError;
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::Zero;
 use num_bigint::BigUint;
 use rand_core::RngCore;
 use verange_core::arith::decompose_to_nary_padded;
@@ -135,7 +139,7 @@ impl Type2Prover {
                 *slot = Scalar::from(count as u64);
             }
         } else {
-            let actual_mod = ((k + statement.tt - 1) / statement.tt) * l;
+            let actual_mod = k.div_ceil(statement.tt) * l;
             let mut tt_counter = 0usize;
             let mut narys_t = Vec::with_capacity(statement.tt);
             let mut current_digits = Vec::new();
@@ -320,7 +324,7 @@ impl Type2Verifier {
                 }
             }
         } else {
-            let actual_mod = ((k + statement.tt - 1) / statement.tt) * l;
+            let actual_mod = k.div_ceil(statement.tt) * l;
             let mut tt_counter = 0usize;
             for i in 0..lk {
                 let row = i / k;
@@ -366,8 +370,8 @@ impl Type2Verifier {
 
         let eq1_lhs = commit_with_basis_and_h(&params.gs, &udotvs, &params.h, proof.eta1)?;
         let mut eq1_rhs = Commitment::identity();
-        for i in 0..k {
-            eq1_rhs = eq1_rhs.add(&proof.ctk[i].mul_scalar(cl_es[i]));
+        for (ctk, e) in proof.ctk.iter().zip(cl_es.iter()) {
+            eq1_rhs = eq1_rhs.add(&ctk.mul_scalar(*e));
         }
         eq1_rhs = eq1_rhs.add(&proof.big_s);
         let h_sum = params
@@ -379,15 +383,15 @@ impl Type2Verifier {
 
         let eq2_lhs = commit_to(params, muprime_sum, proof.eta2);
         let mut eq2_rhs = Commitment::identity();
-        for i in 0..statement.b {
+        for (i, cm) in proof.cms.iter().enumerate() {
             let inv = invert_or_err(
                 alpha + Scalar::from(i as u64),
                 "alpha + i inverse does not exist",
             )?;
-            eq2_rhs = eq2_rhs.add(&proof.cms[i].mul_scalar(inv));
+            eq2_rhs = eq2_rhs.add(&cm.mul_scalar(inv));
         }
-        for i in 0..k {
-            eq2_rhs = eq2_rhs.add(&proof.cvk[i].mul_scalar(einverse[i]));
+        for (cvk, inv) in proof.cvk.iter().zip(einverse.iter()) {
+            eq2_rhs = eq2_rhs.add(&cvk.mul_scalar(*inv));
         }
         let b2 = eq2_lhs == eq2_rhs;
 
@@ -398,8 +402,8 @@ impl Type2Verifier {
             .fold(Scalar::from(0u64), |acc, value| acc + *value);
         let eq3_lhs = commit_to(params, vsum, proof.eta3);
         let mut eq3_rhs = Commitment::identity();
-        for i in 0..k {
-            eq3_rhs = eq3_rhs.add(&proof.cws[i].mul_scalar(cl_es[i]));
+        for (cw, e) in proof.cws.iter().zip(cl_es.iter()) {
+            eq3_rhs = eq3_rhs.add(&cw.mul_scalar(*e));
         }
         eq3_rhs = eq3_rhs.add(&proof.big_r);
         let b3 = eq3_lhs == eq3_rhs;
@@ -409,8 +413,8 @@ impl Type2Verifier {
             proof.ys[0] == sum_cws
         } else {
             let mut agg = Commitment::identity();
-            for i in 0..statement.tt {
-                agg = agg.add(&proof.ys[i].mul_scalar(pow_usize(gamma, i + 1)));
+            for (i, y) in proof.ys.iter().enumerate().take(statement.tt) {
+                agg = agg.add(&y.mul_scalar(pow_usize(gamma, i + 1)));
             }
             agg == sum_cws
         };
@@ -439,6 +443,11 @@ fn validate_statement(
     }
     if statement.nbits > statement.l * statement.k {
         return Err(ProofError::InvalidStatement("L*K must be >= nbits"));
+    }
+    if !statement.aggregated && statement.tt != 1 {
+        return Err(ProofError::InvalidStatement(
+            "non-aggregated mode requires tt == 1",
+        ));
     }
     if statement.aggregated && statement.tt <= 1 {
         return Err(ProofError::InvalidStatement(
@@ -554,56 +563,4 @@ fn challenge_beta(
         transcript.append_point(b"ct", commitment.point());
     }
     transcript.challenge_scalar(b"beta")
-}
-
-fn commit_with_basis_and_h(
-    basis: &[CurvePoint],
-    coeffs: &[Scalar],
-    h: &CurvePoint,
-    r: Scalar,
-) -> Result<Commitment, ProofError> {
-    if basis.len() != coeffs.len() {
-        return Err(ProofError::InvalidStatement(
-            "basis and coefficient lengths must match",
-        ));
-    }
-
-    let mut point = *h * r;
-    for (g, c) in basis.iter().zip(coeffs.iter()) {
-        point += *g * *c;
-    }
-    Ok(Commitment::new(point))
-}
-
-fn build_base_powers(nbits: usize, base: Scalar) -> Vec<Scalar> {
-    (0..nbits).map(|i| pow_usize(base, i)).collect()
-}
-
-fn inner_product(a: &[Scalar], b: &[Scalar]) -> Result<Scalar, ProofError> {
-    if a.len() != b.len() {
-        return Err(ProofError::InvalidProof(
-            "inner-product vectors must have same length",
-        ));
-    }
-    Ok(a.iter()
-        .zip(b.iter())
-        .fold(Scalar::from(0u64), |acc, (x, y)| acc + (*x * *y)))
-}
-
-fn invert_or_err(value: Scalar, msg: &'static str) -> Result<Scalar, ProofError> {
-    value.inverse().ok_or(ProofError::InvalidProof(msg))
-}
-
-fn biguint_to_scalar(value: &BigUint) -> Scalar {
-    Scalar::from_be_bytes_mod_order(&value.to_bytes_be())
-}
-
-fn pow_usize(base: Scalar, exp: usize) -> Scalar {
-    base.pow([exp as u64])
-}
-
-fn random_scalar(rng: &mut impl RngCore) -> Scalar {
-    let mut bytes = [0u8; 64];
-    rng.fill_bytes(&mut bytes);
-    Scalar::from_be_bytes_mod_order(&bytes)
 }

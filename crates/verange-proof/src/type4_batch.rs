@@ -1,5 +1,8 @@
+use crate::utils::{
+    biguint_to_scalar, commit_with_basis_and_h, invert_or_err, pow_usize, random_scalar,
+};
 use crate::ProofError;
-use ark_ff::{Field, One, PrimeField, Zero};
+use ark_ff::{One, Zero};
 use num_bigint::BigUint;
 use rand_core::RngCore;
 use verange_core::arith::decompose_to_nary;
@@ -226,12 +229,18 @@ impl Type4BatchVerifier {
             proof.rprime_1,
         )?;
         let mut eq1_rhs = Commitment::identity();
-        for i in 0..=m {
+        for (i, ((cg, cp), cq)) in proof
+            .com_g
+            .iter()
+            .zip(proof.com_p.iter())
+            .zip(proof.com_q.iter())
+            .enumerate()
+        {
             let z_u = pow_usize(z, i);
-            let h_gpq = proof.com_g[i]
+            let h_gpq = cg
                 .mul_scalar((z_minus_1 + rho_z_x_z_wx) * z_u)
-                .add(&proof.com_p[i].mul_scalar(rho2_z_1_z_wx * z_u))
-                .add(&proof.com_q[i].mul_scalar(z_1_z_x_z_wx_negate * z_u));
+                .add(&cp.mul_scalar(rho2_z_1_z_wx * z_u))
+                .add(&cq.mul_scalar(z_1_z_x_z_wx_negate * z_u));
             eq1_rhs = eq1_rhs.add(&h_gpq);
         }
         eq1_rhs = eq1_rhs.add(&proof.cm_aprime.mul_scalar(rho_z_x_z_wx * gamma));
@@ -250,9 +259,9 @@ impl Type4BatchVerifier {
             + rs[2].evaluate(z) * rho2_z_1_z_wx;
 
         let mut eq2_1 = proof.qv[0];
-        for i in 1..=n {
+        for (i, coeff) in proof.qv.iter().enumerate().skip(1) {
             let exp = (i - 1) * m + eta;
-            eq2_1 += proof.qv[i] * pow_usize(z, exp);
+            eq2_1 += *coeff * pow_usize(z, exp);
         }
         let b2 = eq2_1 == eq2_2;
 
@@ -310,6 +319,11 @@ fn validate_statement(
     }
     if statement.k == 0 {
         return Err(ProofError::InvalidStatement("K must be > 0"));
+    }
+    if statement.k != 4 {
+        return Err(ProofError::InvalidStatement(
+            "Type4_batch currently requires K == 4",
+        ));
     }
     if statement.l != params.gs.len() {
         return Err(ProofError::InvalidStatement(
@@ -568,8 +582,8 @@ fn setup_hijs(
     } else {
         coeffs[0]
     };
-    for i in 1..=n {
-        h[0][i] = blindings[i - 1];
+    if n > 0 {
+        h[0][1..(n + 1)].copy_from_slice(&blindings[..n]);
     }
 
     for i in 1..=m {
@@ -595,8 +609,8 @@ fn setup_hijs(
     }
 
     if n > 0 {
-        for i in 1..n {
-            h[m][i] -= blindings[i];
+        for (slot, blinding) in h[m][1..n].iter_mut().zip(blindings.iter().skip(1)) {
+            *slot -= *blinding;
         }
     }
 
@@ -613,24 +627,6 @@ fn commit_with_first_generator_and_h(
         .first()
         .ok_or(ProofError::InvalidStatement("params.gs must not be empty"))?;
     Ok(Commitment::new(*first * message + params.h * blinding))
-}
-
-fn commit_with_basis_and_h(
-    basis: &[CurvePoint],
-    coeffs: &[Scalar],
-    h: &CurvePoint,
-    r: Scalar,
-) -> Result<Commitment, ProofError> {
-    if basis.len() != coeffs.len() {
-        return Err(ProofError::InvalidStatement(
-            "basis and coefficient lengths must match",
-        ));
-    }
-    let mut point = *h * r;
-    for (g, c) in basis.iter().zip(coeffs.iter()) {
-        point += *g * *c;
-    }
-    Ok(Commitment::new(point))
 }
 
 fn commit_h_matrix(
@@ -680,22 +676,4 @@ fn poly_mul_scalar(poly: &Polynomial, scalar: Scalar) -> Polynomial {
 
 fn map_poly_err(_: verange_poly_commit::PolyCommitError) -> ProofError {
     ProofError::InvalidProof("polynomial operation failed")
-}
-
-fn biguint_to_scalar(value: &BigUint) -> Scalar {
-    Scalar::from_be_bytes_mod_order(&value.to_bytes_be())
-}
-
-fn invert_or_err(value: Scalar, msg: &'static str) -> Result<Scalar, ProofError> {
-    value.inverse().ok_or(ProofError::InvalidProof(msg))
-}
-
-fn pow_usize(base: Scalar, exp: usize) -> Scalar {
-    base.pow([exp as u64])
-}
-
-fn random_scalar(rng: &mut impl RngCore) -> Scalar {
-    let mut bytes = [0u8; 64];
-    rng.fill_bytes(&mut bytes);
-    Scalar::from_be_bytes_mod_order(&bytes)
 }

@@ -6,6 +6,7 @@ use rand_chacha::ChaCha20Rng;
 use verange_core::transcript::TranscriptMode;
 use verange_core::PedersenParams;
 use verange_proof::type2p::{Type2PProver, Type2PStatement, Type2PVerifier, Type2PWitness};
+use verange_proof::ProofError;
 
 fn sample_params(l: usize) -> PedersenParams {
     let g = G1Projective::generator();
@@ -32,16 +33,19 @@ fn type2p_tests_k3_case_verifies() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([41u8; 32]);
-    let proof = Type2PProver::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove");
-
-    assert!(Type2PVerifier::verify(
+    let proof = Type2PProver::prove(
         &statement,
-        &proof,
+        &witness,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
+        &mut rng,
     )
-    .expect("verify"));
+    .expect("prove");
+
+    assert!(
+        Type2PVerifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verify")
+    );
 }
 
 #[test]
@@ -60,14 +64,60 @@ fn type2p_tests_k4_case_verifies() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([51u8; 32]);
-    let proof = Type2PProver::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove");
-
-    assert!(Type2PVerifier::verify(
+    let proof = Type2PProver::prove(
         &statement,
+        &witness,
+        &params,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("prove");
+
+    assert!(
+        Type2PVerifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verify")
+    );
+}
+
+#[test]
+fn type2p_tests_non_aggregated_tt_gt1_is_rejected() {
+    let params = sample_params(4);
+    let statement = Type2PStatement {
+        nbits: 12,
+        k: 3,
+        l: 4,
+        b: 8,
+        tt: 1,
+        aggregated: false,
+    };
+    let witness = Type2PWitness {
+        values: vec![BigUint::from(1234u32)],
+    };
+
+    let mut rng = ChaCha20Rng::from_seed([43u8; 32]);
+    let proof = Type2PProver::prove(
+        &statement,
+        &witness,
+        &params,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("prove");
+
+    let invalid_statement = Type2PStatement {
+        nbits: 12,
+        k: 3,
+        l: 4,
+        b: 8,
+        tt: 2,
+        aggregated: false,
+    };
+    let err = Type2PVerifier::verify(
+        &invalid_statement,
         &proof,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
     )
-    .expect("verify"));
+    .expect_err("verify should reject non-aggregated tt > 1");
+    assert!(matches!(err, ProofError::InvalidStatement(_)));
 }

@@ -1,11 +1,15 @@
+use crate::utils::{
+    biguint_to_scalar, build_base_powers, commit_with_basis_and_h, inner_product, pow_usize,
+    random_scalar,
+};
 use crate::ProofError;
-use ark_ff::{Field, PrimeField};
+use ark_ff::Field;
 use num_bigint::BigUint;
 use rand_core::RngCore;
 use verange_core::arith::decompose_to_nary_padded;
 use verange_core::commit_to;
 use verange_core::commitment::Commitment;
-use verange_core::curve::{CurvePoint, Scalar};
+use verange_core::curve::Scalar;
 use verange_core::transcript::{Transcript, TranscriptMode};
 use verange_core::{sum_commitments, PedersenParams};
 use verange_poly_commit::commit::{commit_poly, open_poly, verify_poly, PolyCommitParams};
@@ -309,8 +313,8 @@ impl Type3Verifier {
 
         let eq1_lhs = commit_with_basis_and_h(&params.gs, &proof.djx, &params.h, proof.eta1)?;
         let mut eq1_rhs = Commitment::identity();
-        for col in 0..v {
-            eq1_rhs = eq1_rhs.add(&proof.c_d[col].mul_scalar(lkx_eval[col]));
+        for (c_d, l_eval) in proof.c_d.iter().zip(lkx_eval.iter()) {
+            eq1_rhs = eq1_rhs.add(&c_d.mul_scalar(*l_eval));
         }
         eq1_rhs = eq1_rhs.add(&proof.c_r1.mul_scalar(l0_value));
         let b1 = eq1_lhs == eq1_rhs;
@@ -328,8 +332,8 @@ impl Type3Verifier {
         let djbj = inner_product(&proof.djx, &proof.bjx)?;
         let eq3_lhs = commit_to(params, proof.y_s * l0_value + djbj, proof.eta2);
         let mut eq3_rhs = proof.c_r2.mul_scalar(l0_value);
-        for col in 0..v {
-            eq3_rhs = eq3_rhs.add(&proof.c_w[col].mul_scalar(lkx_eval[col]));
+        for (c_w, l_eval) in proof.c_w.iter().zip(lkx_eval.iter()) {
+            eq3_rhs = eq3_rhs.add(&c_w.mul_scalar(*l_eval));
         }
         let b3 = eq3_lhs == eq3_rhs;
 
@@ -338,8 +342,13 @@ impl Type3Verifier {
             proof.witness_commitments[0] == sum_cw
         } else {
             let mut agg = Commitment::identity();
-            for i in 0..statement.tt {
-                agg = agg.add(&proof.witness_commitments[i].mul_scalar(pow_usize(gamma, i + 1)));
+            for (i, commitment) in proof
+                .witness_commitments
+                .iter()
+                .enumerate()
+                .take(statement.tt)
+            {
+                agg = agg.add(&commitment.mul_scalar(pow_usize(gamma, i + 1)));
             }
             agg == sum_cw
         };
@@ -441,6 +450,11 @@ fn validate_statement(
     }
     if statement.tt == 0 {
         return Err(ProofError::InvalidStatement("tt must be > 0"));
+    }
+    if !statement.aggregated && statement.tt != 1 {
+        return Err(ProofError::InvalidStatement(
+            "non-aggregated mode requires tt == 1",
+        ));
     }
     if statement.aggregated && statement.tt <= 1 {
         return Err(ProofError::InvalidStatement(
@@ -592,54 +606,6 @@ fn poly_mul_scalar(poly: &Polynomial, scalar: Scalar) -> Polynomial {
     poly.mul(&poly_constant(scalar))
 }
 
-fn commit_with_basis_and_h(
-    basis: &[CurvePoint],
-    coeffs: &[Scalar],
-    h: &CurvePoint,
-    r: Scalar,
-) -> Result<Commitment, ProofError> {
-    if basis.len() != coeffs.len() {
-        return Err(ProofError::InvalidStatement(
-            "basis and coefficient lengths must match",
-        ));
-    }
-
-    let mut point = *h * r;
-    for (g, c) in basis.iter().zip(coeffs.iter()) {
-        point += *g * *c;
-    }
-    Ok(Commitment::new(point))
-}
-
-fn inner_product(a: &[Scalar], b: &[Scalar]) -> Result<Scalar, ProofError> {
-    if a.len() != b.len() {
-        return Err(ProofError::InvalidProof(
-            "inner-product vectors must have same length",
-        ));
-    }
-    Ok(a.iter()
-        .zip(b.iter())
-        .fold(Scalar::from(0u64), |acc, (x, y)| acc + (*x * *y)))
-}
-
-fn build_base_powers(nbits: usize, base: Scalar) -> Vec<Scalar> {
-    (0..nbits).map(|i| pow_usize(base, i)).collect()
-}
-
-fn biguint_to_scalar(value: &BigUint) -> Scalar {
-    Scalar::from_be_bytes_mod_order(&value.to_bytes_be())
-}
-
 fn map_poly_err(_: verange_poly_commit::PolyCommitError) -> ProofError {
     ProofError::InvalidProof("polynomial commitment operation failed")
-}
-
-fn pow_usize(base: Scalar, exp: usize) -> Scalar {
-    base.pow([exp as u64])
-}
-
-fn random_scalar(rng: &mut impl RngCore) -> Scalar {
-    let mut bytes = [0u8; 64];
-    rng.fill_bytes(&mut bytes);
-    Scalar::from_be_bytes_mod_order(&bytes)
 }

@@ -1,10 +1,12 @@
+use crate::utils::{
+    biguint_to_scalar, commit_with_basis_and_h, inner_product, pow_usize, random_scalar,
+};
 use crate::ProofError;
-use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use rand_core::RngCore;
 use verange_core::commit_to;
 use verange_core::commitment::Commitment;
-use verange_core::curve::{CurvePoint, Scalar};
+use verange_core::curve::Scalar;
 use verange_core::transcript::{Transcript, TranscriptMode};
 use verange_core::{sum_commitments, PedersenParams};
 
@@ -109,7 +111,9 @@ impl Type1Prover {
             for j in 0..l {
                 ts[j] = rs[j][i] * (bsr[i][j] - Scalar::from(2u64) * ds[i][j]);
             }
-            cts.push(commit_with_basis_and_h(&params.gs, &ts, &params.h, gamma_t[i])?);
+            cts.push(commit_with_basis_and_h(
+                &params.gs, &ts, &params.h, gamma_t[i],
+            )?);
         }
 
         let mut rjs = vec![Scalar::from(0u64); l];
@@ -182,7 +186,7 @@ impl Type1Verifier {
                 };
             }
         } else {
-            let actual_mod = if k % tt == 0 { k / tt } else { k / tt + 1 } * l;
+            let actual_mod = k.div_ceil(tt) * l;
             let mut tt_counter = 0usize;
             for i in 0..lk {
                 let idx = i / k;
@@ -242,8 +246,8 @@ impl Type1Verifier {
             proof.ys[0] == sum_cws
         } else {
             let mut agg = Commitment::identity();
-            for i in 0..tt {
-                agg = agg.add(&proof.ys[i].mul_scalar(pow_usize(gamma, i + 1)));
+            for (i, y) in proof.ys.iter().enumerate().take(tt) {
+                agg = agg.add(&y.mul_scalar(pow_usize(gamma, i + 1)));
             }
             agg == sum_cws
         };
@@ -252,18 +256,31 @@ impl Type1Verifier {
     }
 }
 
-fn validate_statement(statement: &Type1Statement, params: &PedersenParams) -> Result<(), ProofError> {
+fn validate_statement(
+    statement: &Type1Statement,
+    params: &PedersenParams,
+) -> Result<(), ProofError> {
     if statement.nbits == 0 {
         return Err(ProofError::InvalidStatement("nbits must be > 0"));
     }
     if statement.k == 0 {
         return Err(ProofError::InvalidStatement("k must be > 0"));
     }
+    if statement.tt == 0 {
+        return Err(ProofError::InvalidStatement("tt must be > 0"));
+    }
     if params.gs.is_empty() {
-        return Err(ProofError::InvalidStatement("generator basis must be non-empty"));
+        return Err(ProofError::InvalidStatement(
+            "generator basis must be non-empty",
+        ));
     }
     if params.gs.len() * statement.k < statement.nbits {
         return Err(ProofError::InvalidStatement("L*K must be >= nbits"));
+    }
+    if !statement.aggregated && statement.tt != 1 {
+        return Err(ProofError::InvalidStatement(
+            "non-aggregated mode requires tt == 1",
+        ));
     }
     if statement.aggregated && statement.tt <= 1 {
         return Err(ProofError::InvalidStatement(
@@ -280,9 +297,15 @@ fn validate_statement(statement: &Type1Statement, params: &PedersenParams) -> Re
 
 fn validate_witness(statement: &Type1Statement, witness: &Type1Witness) -> Result<(), ProofError> {
     if witness.values.is_empty() {
-        return Err(ProofError::InvalidWitness("at least one witness value is required"));
+        return Err(ProofError::InvalidWitness(
+            "at least one witness value is required",
+        ));
     }
-    let expected = if statement.aggregated { statement.tt } else { 1 };
+    let expected = if statement.aggregated {
+        statement.tt
+    } else {
+        1
+    };
     if witness.values.len() != expected {
         return Err(ProofError::InvalidWitness(
             "witness values length does not match statement",
@@ -298,7 +321,11 @@ fn validate_proof_shape(
 ) -> Result<(), ProofError> {
     let l = params.gs.len();
     let k = statement.k;
-    let expected_ys = if statement.aggregated { statement.tt } else { 1 };
+    let expected_ys = if statement.aggregated {
+        statement.tt
+    } else {
+        1
+    };
 
     if proof.ys.len() != expected_ys {
         return Err(ProofError::InvalidProof("invalid Y commitments length"));
@@ -346,7 +373,7 @@ fn fill_bits_matrices(
     }
 
     let tt = statement.tt;
-    let actual_mod = if k % tt == 0 { k / tt } else { k / tt + 1 } * l;
+    let actual_mod = k.div_ceil(tt) * l;
     let mut tt_counter = 0usize;
     for i in 0..lk {
         let idx = i / k;
@@ -401,50 +428,6 @@ fn challenge_beta(
     transcript.challenge_scalar(b"beta")
 }
 
-fn commit_with_basis_and_h(
-    basis: &[CurvePoint],
-    coeffs: &[Scalar],
-    h: &CurvePoint,
-    r: Scalar,
-) -> Result<Commitment, ProofError> {
-    if basis.len() != coeffs.len() {
-        return Err(ProofError::InvalidStatement(
-            "basis and coefficient lengths must match",
-        ));
-    }
-
-    let mut point = *h * r;
-    for (g, c) in basis.iter().zip(coeffs.iter()) {
-        point += *g * *c;
-    }
-    Ok(Commitment::new(point))
-}
-
-fn inner_product(a: &[Scalar], b: &[Scalar]) -> Result<Scalar, ProofError> {
-    if a.len() != b.len() {
-        return Err(ProofError::InvalidProof(
-            "inner-product vectors must have same length",
-        ));
-    }
-    Ok(a.iter()
-        .zip(b.iter())
-        .fold(Scalar::from(0u64), |acc, (x, y)| acc + (*x * *y)))
-}
-
-fn biguint_to_scalar(value: &BigUint) -> Scalar {
-    Scalar::from_be_bytes_mod_order(&value.to_bytes_be())
-}
-
 fn test_bit(value: &BigUint, bit_index: usize) -> bool {
     ((value >> bit_index) & BigUint::from(1u8)) == BigUint::from(1u8)
-}
-
-fn pow_usize(base: Scalar, exp: usize) -> Scalar {
-    base.pow([exp as u64])
-}
-
-fn random_scalar(rng: &mut impl RngCore) -> Scalar {
-    let mut bytes = [0u8; 64];
-    rng.fill_bytes(&mut bytes);
-    Scalar::from_be_bytes_mod_order(&bytes)
 }

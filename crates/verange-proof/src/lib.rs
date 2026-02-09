@@ -5,6 +5,7 @@ pub mod type2;
 pub mod type2p;
 pub mod type3;
 pub mod type4_batch;
+mod utils;
 
 use std::error::Error;
 use std::fmt::{Display, Formatter};

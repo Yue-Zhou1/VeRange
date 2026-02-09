@@ -8,6 +8,7 @@ use verange_core::PedersenParams;
 use verange_proof::type4_batch::{
     Type4BatchProver, Type4BatchStatement, Type4BatchVerifier, Type4BatchWitness,
 };
+use verange_proof::ProofError;
 
 fn sample_params(l: usize) -> PedersenParams {
     let g = G1Projective::generator();
@@ -75,4 +76,43 @@ fn type4_batch_tests_tamper_fails() {
         !Type4BatchVerifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
             .expect("verify")
     );
+}
+
+#[test]
+fn type4_batch_tests_k_mismatch_is_rejected() {
+    let params = sample_params(32);
+    let statement = Type4BatchStatement {
+        nbits: 16,
+        k: 4,
+        l: 32,
+        b: 8,
+    };
+    let witness = Type4BatchWitness {
+        value: BigUint::from(1337u32),
+    };
+
+    let mut rng = ChaCha20Rng::from_seed([101u8; 32]);
+    let proof = Type4BatchProver::prove(
+        &statement,
+        &witness,
+        &params,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("prove");
+
+    let mismatched_statement = Type4BatchStatement {
+        nbits: 16,
+        k: 999,
+        l: 32,
+        b: 8,
+    };
+    let err = Type4BatchVerifier::verify(
+        &mismatched_statement,
+        &proof,
+        &params,
+        TranscriptMode::JavaCompat,
+    )
+    .expect_err("verify should reject mismatched Type4_batch k");
+    assert!(matches!(err, ProofError::InvalidStatement(_)));
 }
