@@ -3,6 +3,7 @@
 pub mod type1;
 pub mod type2;
 pub mod type2p;
+pub mod type3;
 
 use std::error::Error;
 use std::fmt::{Display, Formatter};
