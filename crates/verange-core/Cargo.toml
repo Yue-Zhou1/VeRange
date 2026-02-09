@@ -6,3 +6,8 @@ edition = "2021"
 [lib]
 name = "verange_core"
 path = "src/lib.rs"
+
+[dependencies]
+ark-bn254 = "0.4"
+ark-ec = "0.4"
+ark-ff = "0.4"
