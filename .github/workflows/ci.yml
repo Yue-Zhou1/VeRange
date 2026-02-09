@@ -18,10 +18,16 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Run workspace tests
-        run: cargo test --workspace
+        run: cargo test --workspace --locked
 
       - name: Run verange-proof focused tests
-        run: cargo test -p verange-proof
+        run: cargo test -p verange-proof --locked
+
+      - name: Run verange-proof fuzz-like safety tests
+        run: cargo test -p verange-proof --test fuzz_like_tests --locked
+
+      - name: Run verange-proof mode-separation tests
+        run: cargo test -p verange-proof --test mode_tests --locked
 
       - name: Run verange-proof clippy gate
-        run: cargo clippy -p verange-proof --all-targets -- -W clippy::all
+        run: cargo clippy -p verange-proof --all-targets --no-deps --locked -- -D warnings -W clippy::all -A clippy::needless_range_loop -A clippy::too_many_arguments

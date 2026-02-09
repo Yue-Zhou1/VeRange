@@ -9,6 +9,7 @@ use std::path::Path;
 use verange_core::transcript::TranscriptMode;
 use verange_core::PedersenParams;
 use verange_proof::type1::{Type1Prover, Type1Statement, Type1Verifier, Type1Witness};
+use verange_proof::type2::{Type2Prover, Type2Statement, Type2Verifier, Type2Witness};
 use verange_proof::type2p::{Type2PProver, Type2PStatement, Type2PVerifier, Type2PWitness};
 use verange_proof::type3::{Type3Prover, Type3Statement, Type3Verifier, Type3Witness};
 use verange_proof::type4_batch::{
@@ -109,6 +110,32 @@ fn java_compat_tests_fixture_vectors_verify() {
                 .expect("prove type2p");
                 assert!(Type2PVerifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
                     .expect("verify type2p"));
+            }
+            "type2" => {
+                let params = sample_params(v.l);
+                let statement = Type2Statement {
+                    nbits: v.nbits,
+                    k: v.k,
+                    l: v.l,
+                    b: v.b,
+                    tt: v.tt,
+                    aggregated: v.aggregated,
+                };
+                let witness = Type2Witness {
+                    values: v.values.iter().map(|x| parse_biguint(x)).collect(),
+                };
+                let proof = Type2Prover::prove(
+                    &statement,
+                    &witness,
+                    &params,
+                    TranscriptMode::JavaCompat,
+                    &mut rng,
+                )
+                .expect("prove type2");
+                assert!(
+                    Type2Verifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+                        .expect("verify type2")
+                );
             }
             "type3" => {
                 let params = sample_params(v.u);

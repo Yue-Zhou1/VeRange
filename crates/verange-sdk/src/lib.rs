@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod error;
+pub mod metrics;
 pub mod params;
 pub mod prover;
 pub mod verifier;
@@ -19,6 +20,10 @@ pub use verange_proof::type3::{Type3Proof, Type3Statement, Type3Witness};
 pub use verange_proof::type4_batch::{Type4BatchProof, Type4BatchStatement, Type4BatchWitness};
 
 pub use error::SdkError as VerangeSdkError;
+pub use metrics::{
+    collect_default_proof_metrics, run_default_proof_metrics, write_proof_metrics_log, MetricsError,
+    ProofMetricsRecord,
+};
 pub use params::Parameters;
 pub use prover::Prover;
 pub use verifier::Verifier;

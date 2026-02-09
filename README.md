@@ -37,19 +37,32 @@ If your goal is to build or understand the code:
 - **Read the associated paper** to understand the cryptographic background and how the range arguments work.
 - **Use Cargo for Rust**. The Rust code is organized as a multi-crate workspace and tested via `cargo test`.
 
-## Rust SDK Refactor (WIP)
+## Rust SDK
 
-A Rust refactor is now being developed in this repository under the workspace crates:
+This branch now includes a Rust SDK and proof implementation under the workspace crates:
 
 - `crates/verange-core`
 - `crates/verange-poly-commit`
 - `crates/verange-proof`
 - `crates/verange-sdk`
 
-See `README-rust-sdk.md` for current usage, Type2P binary-format details, and Type4 parameter requirements.
+Implemented proof systems in Rust include:
+
+- `type1`
+- `type2`
+- `type2p`
+- `type3`
+- `type4_batch`
+
+See `README-rust-sdk.md` for SDK usage, Type2P binary-format details, and Type4 parameter requirements.
 
 Useful commands:
 
 - Run all Rust tests: `cargo test --workspace`
+- Run proof crate tests only: `cargo test -p verange-proof`
+- Run proof-mode separation tests: `cargo test -p verange-proof --test mode_tests`
+- Run proof fuzz-like robustness tests: `cargo test -p verange-proof --test fuzz_like_tests`
+- Run proof crate clippy gate: `cargo clippy -p verange-proof --all-targets --no-deps -- -D warnings -W clippy::all -A clippy::needless_range_loop -A clippy::too_many_arguments`
 - Run SDK API tests only: `cargo test -p verange-sdk sdk_api_tests`
 - Run SDK all-types example: `cargo run -p verange-sdk --example sdk_all_types`
+- Run SDK proof-metrics logger: `cargo run -p verange-sdk --example proof_metrics -- logs/proof_metrics.log`

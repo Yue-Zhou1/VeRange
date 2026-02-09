@@ -19,6 +19,16 @@
     "values": ["987"]
   },
   {
+    "scheme": "type2",
+    "nbits": 16,
+    "k": 4,
+    "l": 4,
+    "b": 8,
+    "tt": 2,
+    "aggregated": true,
+    "values": ["181", "77"]
+  },
+  {
     "scheme": "type3",
     "nbits": 16,
     "u": 4,
