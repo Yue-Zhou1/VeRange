@@ -17,5 +17,11 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Run tests
+      - name: Run workspace tests
         run: cargo test --workspace
+
+      - name: Run verange-proof focused tests
+        run: cargo test -p verange-proof
+
+      - name: Run verange-proof clippy gate
+        run: cargo clippy -p verange-proof --all-targets -- -W clippy::all
