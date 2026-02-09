@@ -35,3 +35,14 @@ Because this `main` branch only includes documentation, you’ll need to switch 
 - **Explore each branch**. Check out `java` or `solidity` to inspect the source directories mentioned in the README.
 - **Read the associated paper** to understand the cryptographic background and how the range arguments work.
 - **Learn the build tools**: The Java code uses Maven, while the Solidity code relies on Truffle; familiarity with these toolchains will help you run tests and examples.
+
+## Rust SDK Refactor (WIP)
+
+A Rust refactor is now being developed in this repository under the workspace crates:
+
+- `crates/verange-core`
+- `crates/verange-poly-commit`
+- `crates/verange-proof`
+- `crates/verange-sdk`
+
+See `README-rust-sdk.md` for current usage and status details.
