@@ -12,7 +12,6 @@ use error::SdkError;
 use verange_core::commitment::Commitment;
 use verange_core::curve::Scalar;
 use verange_core::transcript::{java_encode_point, java_encode_scalar};
-use verange_proof::type1::Type1Proof;
 pub use verange_proof::type2p::{Type2PProof, Type2PStatement, Type2PWitness};
 
 pub use error::SdkError as VerangeSdkError;
@@ -22,66 +21,63 @@ pub use verifier::Verifier;
 
 pub fn serialize_type2p_proof(proof: &Type2PProof) -> Vec<u8> {
     let mut out = Vec::new();
-    encode_type1_proof(&proof.inner, &mut out);
+    encode_commitment_vec(&proof.ys, &mut out);
+    encode_commitment(&proof.big_r, &mut out);
+    encode_commitment(&proof.big_s, &mut out);
+    encode_commitment(&proof.big_u, &mut out);
+    encode_commitment_vec(&proof.cws, &mut out);
+    encode_commitment_vec(&proof.cms, &mut out);
+    encode_commitment_vec(&proof.cfk, &mut out);
+    encode_commitment_vec(&proof.ctk, &mut out);
+    encode_commitment_vec(&proof.ctk_kprime, &mut out);
+    encode_scalar(&proof.eta1, &mut out);
+    encode_scalar(&proof.eta2, &mut out);
+    encode_scalar(&proof.eta3, &mut out);
+    encode_scalar(&proof.eta4, &mut out);
+    encode_scalar_vec(&proof.vs, &mut out);
+    encode_scalar_vec(&proof.us, &mut out);
     out
 }
 
 pub fn deserialize_type2p_proof(bytes: &[u8]) -> Result<Type2PProof, SdkError> {
     let mut reader = Reader::new(bytes);
-    let inner = decode_type1_proof(&mut reader)?;
+
+    let ys = decode_commitment_vec(&mut reader)?;
+    let big_r = decode_commitment(&mut reader)?;
+    let big_s = decode_commitment(&mut reader)?;
+    let big_u = decode_commitment(&mut reader)?;
+    let cws = decode_commitment_vec(&mut reader)?;
+    let cms = decode_commitment_vec(&mut reader)?;
+    let cfk = decode_commitment_vec(&mut reader)?;
+    let ctk = decode_commitment_vec(&mut reader)?;
+    let ctk_kprime = decode_commitment_vec(&mut reader)?;
+    let eta1 = decode_scalar(&mut reader)?;
+    let eta2 = decode_scalar(&mut reader)?;
+    let eta3 = decode_scalar(&mut reader)?;
+    let eta4 = decode_scalar(&mut reader)?;
+    let vs = decode_scalar_vec(&mut reader)?;
+    let us = decode_scalar_vec(&mut reader)?;
+
     if !reader.is_finished() {
         return Err(SdkError::Deserialize("trailing bytes in proof payload"));
     }
-    Ok(Type2PProof { inner })
-}
 
-fn encode_type1_proof(proof: &Type1Proof, out: &mut Vec<u8>) {
-    encode_commitment_vec(&proof.ys, out);
-    encode_commitment(&proof.big_r, out);
-    encode_commitment(&proof.big_s, out);
-    encode_commitment_vec(&proof.cws, out);
-    encode_commitment_vec(&proof.cts, out);
-    encode_scalar(&proof.eta1, out);
-    encode_scalar(&proof.eta2, out);
-
-    encode_u32(proof.vs.len() as u32, out);
-    for row in &proof.vs {
-        encode_u32(row.len() as u32, out);
-        for scalar in row {
-            encode_scalar(scalar, out);
-        }
-    }
-}
-
-fn decode_type1_proof(reader: &mut Reader<'_>) -> Result<Type1Proof, SdkError> {
-    let ys = decode_commitment_vec(reader)?;
-    let big_r = decode_commitment(reader)?;
-    let big_s = decode_commitment(reader)?;
-    let cws = decode_commitment_vec(reader)?;
-    let cts = decode_commitment_vec(reader)?;
-    let eta1 = decode_scalar(reader)?;
-    let eta2 = decode_scalar(reader)?;
-
-    let rows = decode_u32(reader)? as usize;
-    let mut vs = Vec::with_capacity(rows);
-    for _ in 0..rows {
-        let cols = decode_u32(reader)? as usize;
-        let mut row = Vec::with_capacity(cols);
-        for _ in 0..cols {
-            row.push(decode_scalar(reader)?);
-        }
-        vs.push(row);
-    }
-
-    Ok(Type1Proof {
+    Ok(Type2PProof {
         ys,
         big_r,
         big_s,
+        big_u,
         cws,
-        cts,
+        cms,
+        cfk,
+        ctk,
+        ctk_kprime,
         eta1,
         eta2,
+        eta3,
+        eta4,
         vs,
+        us,
     })
 }
 
@@ -97,6 +93,22 @@ fn decode_commitment_vec(reader: &mut Reader<'_>) -> Result<Vec<Commitment>, Sdk
     let mut values = Vec::with_capacity(len);
     for _ in 0..len {
         values.push(decode_commitment(reader)?);
+    }
+    Ok(values)
+}
+
+fn encode_scalar_vec(values: &[Scalar], out: &mut Vec<u8>) {
+    encode_u32(values.len() as u32, out);
+    for value in values {
+        encode_scalar(value, out);
+    }
+}
+
+fn decode_scalar_vec(reader: &mut Reader<'_>) -> Result<Vec<Scalar>, SdkError> {
+    let len = decode_u32(reader)? as usize;
+    let mut values = Vec::with_capacity(len);
+    for _ in 0..len {
+        values.push(decode_scalar(reader)?);
     }
     Ok(values)
 }
@@ -118,7 +130,9 @@ fn decode_commitment(reader: &mut Reader<'_>) -> Result<Commitment, SdkError> {
     let y = Fq::from_be_bytes_mod_order(y_bytes);
     let affine = G1Affine::new_unchecked(x, y);
     if !affine.is_on_curve() {
-        return Err(SdkError::Deserialize("invalid commitment point (off-curve)"));
+        return Err(SdkError::Deserialize(
+            "invalid commitment point (off-curve)",
+        ));
     }
     if !affine.is_in_correct_subgroup_assuming_on_curve() {
         return Err(SdkError::Deserialize(
