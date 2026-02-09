@@ -21,7 +21,7 @@ pub struct Type1Witness {
     pub values: Vec<BigUint>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Type1Proof {
     pub ys: Vec<Commitment>,
     pub big_r: Commitment,

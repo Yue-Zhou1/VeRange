@@ -18,7 +18,7 @@ pub struct Type4BatchWitness {
     pub value: BigUint,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Type4BatchProof {
     pub inner: Type1Proof,
 }

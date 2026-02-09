@@ -20,7 +20,7 @@ pub struct Type2Witness {
     pub values: Vec<BigUint>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Type2Proof {
     pub inner: Type1Proof,
 }
