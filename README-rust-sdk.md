@@ -74,12 +74,59 @@ Run it with:
 cargo run -p verange-sdk --example sdk_all_types
 ```
 
+## Proof Metrics Logging
+
+Use the metrics example to log proof size, prove time, verify time, and statement parameters for:
+
+- `type1`
+- `type2`
+- `type2p`
+- `type3`
+- `type4_batch`
+
+Run:
+
+```bash
+# default: logs/proof_metrics.log in JavaCompat mode
+cargo run -p verange-sdk --example proof_metrics
+
+# custom log path + canonical mode
+cargo run -p verange-sdk --example proof_metrics -- logs/my-metrics.log canonical
+```
+
+Each log record includes:
+
+- proof type
+- transcript mode
+- Pedersen basis length (`params_basis_len`)
+- statement parameter string (`statement=...`)
+- `proof_size_bytes`
+- `prove_time_us`
+- `verify_time_us`
+- `verified`
+
+## Transcript Modes
+
+`Prover` and `Verifier` require an explicit `TranscriptMode`:
+
+- `TranscriptMode::JavaCompat`: use this for compatibility with Java-branch hashing/encoding behavior.
+- `TranscriptMode::Canonical`: Rust-native mode with an additional transcript domain tag.
+
+Proofs are mode-bound. A proof generated in one mode is expected to be rejected in the other mode.
+
 ## Running SDK Tests
 
 Run all SDK API integration tests:
 
 ```bash
 cargo test -p verange-sdk sdk_api_tests
+```
+
+Run proof mode/fuzz robustness checks:
+
+```bash
+cargo test -p verange-proof --test mode_tests
+cargo test -p verange-proof --test fuzz_like_tests
 ```
 
 Run one type-specific test:

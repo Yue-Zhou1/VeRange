@@ -11,7 +11,6 @@ pub enum TranscriptMode {
 
 #[derive(Clone, Debug)]
 pub struct Transcript {
-    mode: TranscriptMode,
     state: Vec<u8>,
 }
 
@@ -20,22 +19,19 @@ impl Transcript {
         let mut state = Vec::new();
         state.extend_from_slice(b"verange-transcript-v1");
         append_with_label(&mut state, b"domain", label);
-        Self { mode, state }
+        if mode == TranscriptMode::Canonical {
+            append_with_label(&mut state, b"mode", b"canonical");
+        }
+        Self { state }
     }
 
     pub fn append_scalar(&mut self, label: &[u8], scalar: &Scalar) {
-        let bytes = match self.mode {
-            TranscriptMode::Canonical => java_encode_scalar(scalar).to_vec(),
-            TranscriptMode::JavaCompat => java_encode_scalar(scalar).to_vec(),
-        };
+        let bytes = java_encode_scalar(scalar);
         append_with_label(&mut self.state, label, &bytes);
     }
 
     pub fn append_point(&mut self, label: &[u8], point: &CurvePoint) {
-        let bytes = match self.mode {
-            TranscriptMode::Canonical => java_encode_point(point),
-            TranscriptMode::JavaCompat => java_encode_point(point),
-        };
+        let bytes = java_encode_point(point);
         append_with_label(&mut self.state, label, &bytes);
     }
 

@@ -45,3 +45,22 @@ fn transcript_tests_java_compat_challenge_matches_fixture() {
         assert_eq!(got, vector.expected_hex);
     }
 }
+
+#[test]
+fn transcript_tests_canonical_mode_is_domain_separated() {
+    let mut canonical = Transcript::new(b"type1", TranscriptMode::Canonical);
+    let mut java_compat = Transcript::new(b"type1", TranscriptMode::JavaCompat);
+
+    for scalar in [1u64, 2u64, 3u64, 5u64] {
+        let value = Fr::from(scalar);
+        canonical.append_scalar(b"s", &value);
+        java_compat.append_scalar(b"s", &value);
+    }
+
+    let canonical_challenge = canonical.challenge_scalar(b"challenge");
+    let java_compat_challenge = java_compat.challenge_scalar(b"challenge");
+    assert_ne!(
+        canonical_challenge, java_compat_challenge,
+        "canonical mode should be challenge-domain-separated from java compat"
+    );
+}
