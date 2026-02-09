@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - rust-refactor
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run workspace tests
+        run: cargo test --workspace
+
+      - name: Run verange-proof focused tests
+        run: cargo test -p verange-proof
+
+      - name: Run verange-proof clippy gate
+        run: cargo clippy -p verange-proof --all-targets -- -W clippy::all

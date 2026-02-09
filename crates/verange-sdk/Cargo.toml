@@ -1,0 +1,20 @@
+[package]
+name = "verange-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "verange_sdk"
+path = "src/lib.rs"
+
+[dependencies]
+ark-bn254 = "0.4"
+ark-ec = "0.4"
+ark-ff = "0.4"
+num-bigint = "0.4"
+rand_core = "0.6"
+verange-core = { path = "../verange-core" }
+verange-proof = { path = "../verange-proof" }
+
+[dev-dependencies]
+rand_chacha = "0.3"

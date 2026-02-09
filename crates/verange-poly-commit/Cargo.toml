@@ -1,0 +1,17 @@
+[package]
+name = "verange-poly-commit"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "verange_poly_commit"
+path = "src/lib.rs"
+
+[dependencies]
+ark-bn254 = "0.4"
+ark-ec = "0.4"
+ark-ff = "0.4"
+verange-core = { path = "../verange-core" }
+
+[dev-dependencies]
+ark-bn254 = "0.4"

@@ -1,0 +1,7 @@
+[
+  {
+    "label": "verange-test",
+    "scalars": [1, 2, 3],
+    "expected_hex": "2e178656b850331309fb08b77c8d919a5e02206668004cce459d32e2af4ce7d9"
+  }
+]
