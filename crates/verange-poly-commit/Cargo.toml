@@ -8,4 +8,10 @@ name = "verange_poly_commit"
 path = "src/lib.rs"
 
 [dependencies]
+ark-bn254 = "0.4"
+ark-ec = "0.4"
+ark-ff = "0.4"
 verange-core = { path = "../verange-core" }
+
+[dev-dependencies]
+ark-bn254 = "0.4"
