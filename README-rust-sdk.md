@@ -48,6 +48,49 @@ assert_eq!(proof, decoded);
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
+## SDK API Coverage
+
+`verange-sdk` now exposes prover/verifier calls for all currently ported proof systems:
+
+- `Prover::prove_type1` / `Verifier::verify_type1`
+- `Prover::prove_type2` / `Verifier::verify_type2`
+- `Prover::prove_type2p` / `Verifier::verify_type2p`
+- `Prover::prove_type3` / `Verifier::verify_type3`
+- `Prover::prove_type4_batch` / `Verifier::verify_type4_batch`
+
+The crate root also re-exports the corresponding statement/witness/proof structs:
+
+- `Type1Statement`, `Type1Witness`, `Type1Proof`
+- `Type2Statement`, `Type2Witness`, `Type2Proof`
+- `Type2PStatement`, `Type2PWitness`, `Type2PProof`
+- `Type3Statement`, `Type3Witness`, `Type3Proof`
+- `Type4BatchStatement`, `Type4BatchWitness`, `Type4BatchProof`
+
+See `crates/verange-sdk/examples/sdk_all_types.rs` for a single-file SDK usage walkthrough covering Type1/Type2/Type2P/Type3/Type4_batch.
+
+Run it with:
+
+```bash
+cargo run -p verange-sdk --example sdk_all_types
+```
+
+## Running SDK Tests
+
+Run all SDK API integration tests:
+
+```bash
+cargo test -p verange-sdk sdk_api_tests
+```
+
+Run one type-specific test:
+
+```bash
+cargo test -p verange-sdk sdk_api_tests_type1_end_to_end
+cargo test -p verange-sdk sdk_api_tests_type2_end_to_end
+cargo test -p verange-sdk sdk_api_tests_type3_end_to_end
+cargo test -p verange-sdk sdk_api_tests_type4_batch_end_to_end
+```
+
 ## Type2P Binary Format
 
 `serialize_type2p_proof()` and `deserialize_type2p_proof()` use a deterministic, manual byte layout:
@@ -98,6 +141,7 @@ Practical guidance:
 
 Current Rust parity pass includes full prover/verifier equation ports for:
 
+- `type1`
 - `type2`
 - `type2p`
 - `type3`

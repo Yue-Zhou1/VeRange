@@ -12,7 +12,11 @@ use error::SdkError;
 use verange_core::commitment::Commitment;
 use verange_core::curve::Scalar;
 use verange_core::transcript::{java_encode_point, java_encode_scalar};
+pub use verange_proof::type1::{Type1Proof, Type1Statement, Type1Witness};
+pub use verange_proof::type2::{Type2Proof, Type2Statement, Type2Witness};
 pub use verange_proof::type2p::{Type2PProof, Type2PStatement, Type2PWitness};
+pub use verange_proof::type3::{Type3Proof, Type3Statement, Type3Witness};
+pub use verange_proof::type4_batch::{Type4BatchProof, Type4BatchStatement, Type4BatchWitness};
 
 pub use error::SdkError as VerangeSdkError;
 pub use params::Parameters;
