@@ -20,11 +20,11 @@ fn sample_params(l: usize) -> PedersenParams {
 
 #[test]
 fn type4_batch_tests_valid_proof_verifies() {
-    let params = sample_params(4);
+    let params = sample_params(32);
     let statement = Type4BatchStatement {
         nbits: 16,
         k: 4,
-        l: 4,
+        l: 32,
         b: 8,
     };
     let witness = Type4BatchWitness {
@@ -32,25 +32,28 @@ fn type4_batch_tests_valid_proof_verifies() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([81u8; 32]);
-    let proof = Type4BatchProver::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove");
-
-    assert!(Type4BatchVerifier::verify(
+    let proof = Type4BatchProver::prove(
         &statement,
-        &proof,
+        &witness,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
+        &mut rng,
     )
-    .expect("verify"));
+    .expect("prove");
+
+    assert!(
+        Type4BatchVerifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verify")
+    );
 }
 
 #[test]
 fn type4_batch_tests_tamper_fails() {
-    let params = sample_params(4);
+    let params = sample_params(32);
     let statement = Type4BatchStatement {
         nbits: 16,
         k: 4,
-        l: 4,
+        l: 32,
         b: 8,
     };
     let witness = Type4BatchWitness {
@@ -58,15 +61,18 @@ fn type4_batch_tests_tamper_fails() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([91u8; 32]);
-    let mut proof = Type4BatchProver::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove");
-    proof.inner.eta2 += Fr::from(1u64);
-
-    assert!(!Type4BatchVerifier::verify(
+    let mut proof = Type4BatchProver::prove(
         &statement,
-        &proof,
+        &witness,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
+        &mut rng,
     )
-    .expect("verify"));
+    .expect("prove");
+    proof.rprime_2 += Fr::from(1u64);
+
+    assert!(
+        !Type4BatchVerifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verify")
+    );
 }

@@ -32,16 +32,19 @@ fn type3_tests_valid_aggregated_case_verifies() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([61u8; 32]);
-    let proof = Type3Prover::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove");
-
-    assert!(Type3Verifier::verify(
+    let proof = Type3Prover::prove(
         &statement,
-        &proof,
+        &witness,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
+        &mut rng,
     )
-    .expect("verify"));
+    .expect("prove");
+
+    assert!(
+        Type3Verifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verify")
+    );
 }
 
 #[test]
@@ -50,7 +53,7 @@ fn type3_tests_tamper_fails() {
     let statement = Type3Statement {
         nbits: 8,
         u: 4,
-        v: 2,
+        v: 4,
         b: 4,
         tt: 1,
         aggregated: false,
@@ -60,15 +63,18 @@ fn type3_tests_tamper_fails() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([71u8; 32]);
-    let mut proof = Type3Prover::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove");
-    proof.inner.eta1 += Fr::from(1u64);
-
-    assert!(!Type3Verifier::verify(
+    let mut proof = Type3Prover::prove(
         &statement,
-        &proof,
+        &witness,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
+        &mut rng,
     )
-    .expect("verify"));
+    .expect("prove");
+    proof.eta1 += Fr::from(1u64);
+
+    assert!(
+        !Type3Verifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verify")
+    );
 }

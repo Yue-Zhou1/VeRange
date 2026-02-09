@@ -35,11 +35,19 @@ fn property_tests_single_field_mutation_fails() {
     let wit_1 = Type1Witness {
         values: vec![BigUint::from(173u32)],
     };
-    let mut proof_1 = Type1Prover::prove(&stmt_1, &wit_1, &params_1, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove type1");
+    let mut proof_1 = Type1Prover::prove(
+        &stmt_1,
+        &wit_1,
+        &params_1,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("prove type1");
     proof_1.eta1 += Fr::from(1u64);
-    assert!(!Type1Verifier::verify(&stmt_1, &proof_1, &params_1, TranscriptMode::JavaCompat)
-        .expect("verify type1"));
+    assert!(
+        !Type1Verifier::verify(&stmt_1, &proof_1, &params_1, TranscriptMode::JavaCompat)
+            .expect("verify type1")
+    );
 
     let params_2 = sample_params(4);
     let stmt_2 = Type2PStatement {
@@ -53,11 +61,19 @@ fn property_tests_single_field_mutation_fails() {
     let wit_2 = Type2PWitness {
         values: vec![BigUint::from(987u32)],
     };
-    let mut proof_2 = Type2PProver::prove(&stmt_2, &wit_2, &params_2, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove type2p");
-    proof_2.inner.eta1 += Fr::from(1u64);
-    assert!(!Type2PVerifier::verify(&stmt_2, &proof_2, &params_2, TranscriptMode::JavaCompat)
-        .expect("verify type2p"));
+    let mut proof_2 = Type2PProver::prove(
+        &stmt_2,
+        &wit_2,
+        &params_2,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("prove type2p");
+    proof_2.eta1 += Fr::from(1u64);
+    assert!(
+        !Type2PVerifier::verify(&stmt_2, &proof_2, &params_2, TranscriptMode::JavaCompat)
+            .expect("verify type2p")
+    );
 
     let params_3 = sample_params(4);
     let stmt_3 = Type3Statement {
@@ -71,25 +87,39 @@ fn property_tests_single_field_mutation_fails() {
     let wit_3 = Type3Witness {
         values: vec![BigUint::from(131u32), BigUint::from(75u32)],
     };
-    let mut proof_3 = Type3Prover::prove(&stmt_3, &wit_3, &params_3, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove type3");
-    proof_3.inner.eta2 += Fr::from(1u64);
-    assert!(!Type3Verifier::verify(&stmt_3, &proof_3, &params_3, TranscriptMode::JavaCompat)
-        .expect("verify type3"));
+    let mut proof_3 = Type3Prover::prove(
+        &stmt_3,
+        &wit_3,
+        &params_3,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("prove type3");
+    proof_3.eta2 += Fr::from(1u64);
+    assert!(
+        !Type3Verifier::verify(&stmt_3, &proof_3, &params_3, TranscriptMode::JavaCompat)
+            .expect("verify type3")
+    );
 
-    let params_4 = sample_params(4);
+    let params_4 = sample_params(32);
     let stmt_4 = Type4BatchStatement {
         nbits: 16,
         k: 4,
-        l: 4,
+        l: 32,
         b: 8,
     };
     let wit_4 = Type4BatchWitness {
         value: BigUint::from(1337u32),
     };
-    let mut proof_4 = Type4BatchProver::prove(&stmt_4, &wit_4, &params_4, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove type4_batch");
-    proof_4.inner.eta2 += Fr::from(1u64);
+    let mut proof_4 = Type4BatchProver::prove(
+        &stmt_4,
+        &wit_4,
+        &params_4,
+        TranscriptMode::JavaCompat,
+        &mut rng,
+    )
+    .expect("prove type4_batch");
+    proof_4.rprime_2 += Fr::from(1u64);
     assert!(
         !Type4BatchVerifier::verify(&stmt_4, &proof_4, &params_4, TranscriptMode::JavaCompat)
             .expect("verify type4_batch")

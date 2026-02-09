@@ -32,16 +32,19 @@ fn type2_tests_valid_aggregated_proof_verifies() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([21u8; 32]);
-    let proof = Type2Prover::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove");
-
-    assert!(Type2Verifier::verify(
+    let proof = Type2Prover::prove(
         &statement,
-        &proof,
+        &witness,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
+        &mut rng,
     )
-    .expect("verify"));
+    .expect("prove");
+
+    assert!(
+        Type2Verifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verify")
+    );
 }
 
 #[test]
@@ -60,15 +63,18 @@ fn type2_tests_tamper_fails_verification() {
     };
 
     let mut rng = ChaCha20Rng::from_seed([31u8; 32]);
-    let mut proof = Type2Prover::prove(&statement, &witness, &params, TranscriptMode::JavaCompat, &mut rng)
-        .expect("prove");
-    proof.inner.eta2 += Fr::from(1u64);
-
-    assert!(!Type2Verifier::verify(
+    let mut proof = Type2Prover::prove(
         &statement,
-        &proof,
+        &witness,
         &params,
-        TranscriptMode::JavaCompat
+        TranscriptMode::JavaCompat,
+        &mut rng,
     )
-    .expect("verify"));
+    .expect("prove");
+    proof.eta2 += Fr::from(1u64);
+
+    assert!(
+        !Type2Verifier::verify(&statement, &proof, &params, TranscriptMode::JavaCompat)
+            .expect("verify")
+    );
 }

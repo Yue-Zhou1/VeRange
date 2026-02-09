@@ -32,7 +32,7 @@
     "scheme": "type4_batch",
     "nbits": 16,
     "k": 4,
-    "l": 4,
+    "l": 32,
     "b": 8,
     "value": "1337"
   }
