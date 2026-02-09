@@ -461,7 +461,7 @@ fn validate_statement(
             "aggregated mode requires tt > 1",
         ));
     }
-    if statement.aggregated && (statement.v % statement.tt != 0) {
+    if statement.aggregated && !statement.v.is_multiple_of(statement.tt) {
         return Err(ProofError::InvalidStatement(
             "aggregated Type3 requires V divisible by tt",
         ));

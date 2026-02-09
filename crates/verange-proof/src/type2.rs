@@ -454,7 +454,7 @@ fn validate_statement(
             "aggregated mode requires tt > 1",
         ));
     }
-    if statement.aggregated && statement.nbits % statement.tt != 0 {
+    if statement.aggregated && !statement.nbits.is_multiple_of(statement.tt) {
         return Err(ProofError::InvalidStatement(
             "nbits must be divisible by tt in aggregated mode",
         ));
