@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "crates/verange-core",
+    "crates/verange-poly-commit",
+    "crates/verange-proof",
+    "crates/verange-sdk",
+]
+resolver = "2"

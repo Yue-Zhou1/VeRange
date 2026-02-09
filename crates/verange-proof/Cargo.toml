@@ -1,0 +1,12 @@
+[package]
+name = "verange-proof"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "verange_proof"
+path = "src/lib.rs"
+
+[dependencies]
+verange-core = { path = "../verange-core" }
+verange-poly-commit = { path = "../verange-poly-commit" }

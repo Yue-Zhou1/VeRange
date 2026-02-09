@@ -1,0 +1,12 @@
+[package]
+name = "verange-sdk"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "verange_sdk"
+path = "src/lib.rs"
+
+[dependencies]
+verange-core = { path = "../verange-core" }
+verange-proof = { path = "../verange-proof" }
