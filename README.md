@@ -45,4 +45,4 @@ A Rust refactor is now being developed in this repository under the workspace cr
 - `crates/verange-proof`
 - `crates/verange-sdk`
 
-See `README-rust-sdk.md` for current usage and status details.
+See `README-rust-sdk.md` for current usage, Type2P binary-format details, and Type4 parameter requirements.
