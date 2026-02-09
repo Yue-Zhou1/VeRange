@@ -4,6 +4,7 @@ pub mod commitment;
 pub mod curve;
 pub mod params;
 pub mod scalar;
+pub mod transcript;
 
 use crate::commitment::Commitment;
 use crate::curve::Scalar;
